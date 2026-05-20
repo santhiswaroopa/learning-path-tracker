@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TopicStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  topics       Topic[]
+  notes        Note[]
+}
+
+model Topic {
+  id          Int         @id @default(autoincrement())
+  title       String
+  description String
+  category    String
+  startDate   DateTime?
+  targetDate  DateTime?
+  status      TopicStatus @default(NOT_STARTED)
+  progress    Int         @default(0) // Progress percentage (0-100)
+  priority    Priority    @default(MEDIUM)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  userId      Int
+
+  subtopics   Subtopic[]
+  notes       Note[]
+
+  @@index([status])
+  @@index([category])
+  @@index([priority])
+  @@index([userId])
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subtopic {
+  id          Int      @id @default(autoincrement())
+  topicId     Int
+  title       String
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  topic       Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
+}
+
+model Note {
+  id          Int      @id @default(autoincrement())
+  topicId     Int
+  content     String
+  isImportant Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      Int
+
+  topic       Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
+  @@index([isImportant])
+  @@index([userId])
+}

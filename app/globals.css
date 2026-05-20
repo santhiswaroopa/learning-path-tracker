@@ -1,26 +1,156 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-surface: #0d0d1a;
+  --color-card: #111122;
+  --color-elevated: #181830;
+  --color-accent: #8b5cf6;
+  --color-accent-blue: #3b82f6;
+  --color-accent-indigo: #6366f1;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --background: #08080f;
+  --foreground: #f1f5f9;
+  --surface: #0d0d1a;
+  --card: #111122;
+  --elevated: #181830;
+  --border: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --sidebar-w: 240px;
+  --sidebar-collapsed-w: 64px;
+  --navbar-h: 60px;
+  --accent-1: #8b5cf6;
+  --accent-2: #6366f1;
+  --accent-3: #3b82f6;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
 }
 
 body {
+  height: 100%;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans, system-ui, -apple-system, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
 }
+
+/* ── Scrollbar ─────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* ── Gradient text ──────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #a78bfa 0%, #818cf8 50%, #60a5fa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Glass card ─────────────────────────────────────── */
+.glass {
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+}
+
+/* ── Card hover ─────────────────────────────────────── */
+.card-hover {
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-hover) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Progress shimmer ───────────────────────────────── */
+@keyframes progress-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.progress-fill {
+  background: linear-gradient(90deg, #8b5cf6, #6366f1, #3b82f6, #6366f1, #8b5cf6);
+  background-size: 200% auto;
+  animation: progress-shimmer 4s linear infinite;
+}
+
+/* ── Streak pulse ───────────────────────────────────── */
+@keyframes streak-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(251, 146, 60, 0); }
+}
+.streak-badge {
+  animation: streak-pulse 2.5s ease-in-out infinite;
+}
+
+/* ── Fade in up ─────────────────────────────────────── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up {
+  animation: fade-in-up 0.4s ease forwards;
+}
+.fade-in-up-1 { animation-delay: 0.05s; opacity: 0; }
+.fade-in-up-2 { animation-delay: 0.10s; opacity: 0; }
+.fade-in-up-3 { animation-delay: 0.15s; opacity: 0; }
+.fade-in-up-4 { animation-delay: 0.20s; opacity: 0; }
+
+/* ── Sidebar transition ─────────────────────────────── */
+.sidebar-anim {
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+.content-anim {
+  transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Glow accents ───────────────────────────────────── */
+.glow-purple {
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.2);
+}
+.glow-blue {
+  box-shadow: 0 0 24px rgba(59, 130, 246, 0.2);
+}
+
+/* ── Active nav item ────────────────────────────────── */
+.nav-active {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.15), rgba(99, 102, 241, 0.08));
+  border-right: 2px solid #8b5cf6;
+  color: #c4b5fd;
+}
+
+/* ── Dot ping ───────────────────────────────────────── */
+@keyframes ping {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+.dot-ping { animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; }
