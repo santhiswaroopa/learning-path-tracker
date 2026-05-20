@@ -61,6 +61,11 @@ export default function TopicsPage() {
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // Add-step inline state
+  const [isAddingStep, setIsAddingStep] = useState(false);
+  const [newStepTitle, setNewStepTitle] = useState('');
+  const [isSubmittingStep, setIsSubmittingStep] = useState(false);
+
   // Fetch Topics
   const fetchTopics = async (showLoading = true) => {
     try {
@@ -87,6 +92,8 @@ export default function TopicsPage() {
     if (!selectedTopic) {
       setDrawerNotes([]);
       setConfirmDelete(false);
+      setIsAddingStep(false);
+      setNewStepTitle('');
       return;
     }
 
@@ -353,6 +360,39 @@ export default function TopicsPage() {
         const res = await fetch(`/api/notes?topicId=${selectedTopic.id}`);
         if (res.ok) setDrawerNotes(await res.json());
       }
+    }
+  };
+
+  // Add a new learning step to an already-created topic
+  const handleAddStep = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTopic || !newStepTitle.trim()) return;
+
+    try {
+      setIsSubmittingStep(true);
+      const res = await fetch('/api/subtopics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicId: selectedTopic.id, title: newStepTitle.trim() }),
+      });
+      if (!res.ok) throw new Error('Failed to add step');
+      const { subtopic, topicProgress } = await res.json();
+
+      // Optimistically update local state
+      const updatedTopic = {
+        ...selectedTopic,
+        subtopics: [...selectedTopic.subtopics, subtopic],
+        progress: topicProgress,
+      };
+      setSelectedTopic(updatedTopic);
+      setTopics((prev) => prev.map((t) => (t.id === selectedTopic.id ? updatedTopic : t)));
+      setNewStepTitle('');
+      setIsAddingStep(false);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to add step. Please try again.');
+    } finally {
+      setIsSubmittingStep(false);
     }
   };
 
@@ -694,7 +734,19 @@ export default function TopicsPage() {
 
               {/* Subtopics Checklist */}
               <div className="space-y-3">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Learning Steps</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Learning Steps</h4>
+                  {!isAddingStep && (
+                    <button
+                      onClick={() => { setIsAddingStep(true); setNewStepTitle(''); }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-violet-400 hover:text-violet-300 transition-all cursor-pointer"
+                      style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)' }}
+                    >
+                      <PlusIcon size={10} />
+                      Add More
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-2">
                   {selectedTopic.subtopics.map((sub: Subtopic) => (
                     <label 
@@ -713,8 +765,39 @@ export default function TopicsPage() {
                       </span>
                     </label>
                   ))}
-                  {selectedTopic.subtopics.length === 0 && (
-                    <p className="text-xs text-slate-500 text-center py-4">No subtopics defined for this topic.</p>
+                  {selectedTopic.subtopics.length === 0 && !isAddingStep && (
+                    <p className="text-xs text-slate-500 text-center py-4">No learning steps yet. Add your first step above.</p>
+                  )}
+                  {/* Inline Add-Step Form */}
+                  {isAddingStep && (
+                    <form
+                      onSubmit={handleAddStep}
+                      className="flex items-center gap-2 p-2.5 rounded-lg"
+                      style={{ border: '1px dashed rgba(139,92,246,0.45)', background: 'rgba(139,92,246,0.05)' }}
+                    >
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="e.g. Advanced Queries"
+                        value={newStepTitle}
+                        onChange={(e) => setNewStepTitle(e.target.value)}
+                        className="flex-1 bg-transparent outline-none text-xs text-slate-200 placeholder:text-slate-600"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isSubmittingStep || !newStepTitle.trim()}
+                        className="px-2.5 py-1 rounded bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-semibold disabled:opacity-50 transition-colors cursor-pointer shrink-0"
+                      >
+                        {isSubmittingStep ? '...' : 'Add'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingStep(false)}
+                        className="text-slate-500 hover:text-slate-300 text-xs cursor-pointer shrink-0"
+                      >
+                        ✕
+                      </button>
+                    </form>
                   )}
                 </div>
               </div>
