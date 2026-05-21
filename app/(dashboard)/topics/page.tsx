@@ -650,7 +650,7 @@ export default function TopicsPage() {
           {/* Drawer Panel */}
           <div 
             className="relative w-full max-w-lg h-full flex flex-col shadow-2xl animate-slide-in-right overflow-hidden"
-            style={{ background: 'var(--bg-elevated)', borderLeft: '1px solid var(--border)' }}
+            style={{ background: 'var(--elevated)', borderLeft: '1px solid var(--border)' }}
           >
             {/* Header */}
             <div className="p-6 border-b border-white/[0.06] flex items-center justify-between">

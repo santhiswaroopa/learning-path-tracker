@@ -147,6 +147,7 @@ export async function GET(request: Request) {
       .slice(0, 5);
 
     return NextResponse.json({
+      username: user.username,
       totalTopics,
       completedTopics: completedTopicsCount,
       inProgressTopics: inProgressTopicsCount,

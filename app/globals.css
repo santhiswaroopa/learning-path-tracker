@@ -154,3 +154,13 @@ body {
   75%, 100% { transform: scale(2); opacity: 0; }
 }
 .dot-ping { animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+/* ── Mobile Backdrop Animation ───────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.mobile-backdrop-anim {
+  animation: fade-in 0.25s ease-out forwards;
+}
+

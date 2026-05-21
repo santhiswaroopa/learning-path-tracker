@@ -16,6 +16,7 @@ import QuickRevisionSection from '@/components/ui/QuickRevisionSection';
 import type { Topic, Note } from '@/types';
 
 interface DashboardData {
+  username: string;
   totalTopics: number;
   completedTopics: number;
   inProgressTopics: number;
@@ -172,6 +173,7 @@ export default function DashboardPage() {
   if (!data) return null;
 
   const {
+    username,
     totalTopics,
     completedTopics,
     inProgressTopics,
@@ -202,7 +204,7 @@ export default function DashboardPage() {
         <div className="relative flex items-center justify-between flex-wrap gap-4">
           <div>
             <p className="text-xs font-medium text-violet-400 mb-1 tracking-wide uppercase">Good evening</p>
-            <h2 className="text-xl font-bold text-slate-100">Welcome back, Vakat 👋</h2>
+            <h2 className="text-xl font-bold text-slate-100">Welcome back, {username} 👋</h2>
             <p className="text-sm text-slate-400 mt-1">
               You&apos;re on a <span className="text-orange-400 font-semibold">{currentStreak}-day streak</span>. Keep the momentum going!
             </p>

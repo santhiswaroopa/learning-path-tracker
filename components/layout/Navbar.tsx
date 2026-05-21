@@ -10,7 +10,12 @@ const pageTitles: Record<string, { title: string; subtitle: string }> = {
   '/notes': { title: 'Notes', subtitle: 'Your knowledge base' },
 };
 
-export default function Navbar() {
+interface NavbarProps {
+  onMenuClick?: () => void;
+  isMobile?: boolean;
+}
+
+export default function Navbar({ onMenuClick, isMobile = false }: NavbarProps) {
   const pathname = usePathname();
   const [username, setUsername] = useState('');
 
@@ -36,17 +41,32 @@ export default function Navbar() {
 
   return (
     <header
-      className="shrink-0 flex items-center justify-between px-6 lg:px-8"
+      className="shrink-0 flex items-center justify-between px-4 sm:px-6 lg:px-8"
       style={{
         height: 'var(--navbar-h)',
         background: 'var(--surface)',
         borderBottom: '1px solid var(--border)',
       }}
     >
-      {/* Left — page title */}
-      <div>
-        <h1 className="text-sm font-semibold text-slate-100 leading-tight">{title}</h1>
-        <p className="text-xs text-slate-500">{subtitle}</p>
+      {/* Left — page title & optional mobile menu */}
+      <div className="flex items-center gap-3">
+        {isMobile && (
+          <button
+            onClick={onMenuClick}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-colors cursor-pointer shrink-0"
+            aria-label="Open menu"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="4" y1="18" x2="20" y2="18" />
+            </svg>
+          </button>
+        )}
+        <div>
+          <h1 className="text-sm font-semibold text-slate-100 leading-tight">{title}</h1>
+          <p className="text-xs text-slate-500">{subtitle}</p>
+        </div>
       </div>
 
       {/* Right — actions */}

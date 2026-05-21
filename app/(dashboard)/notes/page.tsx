@@ -189,7 +189,7 @@ export default function NotesPage() {
       </div>
 
       {/* ── Stats row ──────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: 'Total Notes', value: notes.length, icon: <StickyNoteIcon size={14} className="text-violet-400" />, bg: 'rgba(139,92,246,0.1)' },
           { label: 'Topics covered', value: new Set(notes.map((n) => n.topicId)).size, icon: <BookOpenIcon size={14} className="text-blue-400" />, bg: 'rgba(59,130,246,0.1)' },

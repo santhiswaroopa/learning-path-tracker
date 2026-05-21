@@ -14,6 +14,9 @@ import {
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  isMobile?: boolean;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 const navItems = [
@@ -30,7 +33,13 @@ const LogOutIcon = ({ size = 15, className = '' }) => (
   </svg>
 );
 
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({
+  collapsed,
+  onToggle,
+  isMobile = false,
+  mobileOpen = false,
+  onMobileClose,
+}: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [username, setUsername] = useState('Learner');
@@ -65,56 +74,82 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const initialLetter = username.charAt(0).toUpperCase() || 'L';
 
+  // Mobile layout styles override desktop styles
+  const sidebarWidth = isMobile
+    ? 'var(--sidebar-w)'
+    : (collapsed ? 'var(--sidebar-collapsed-w)' : 'var(--sidebar-w)');
+
+  const transformStyle = isMobile
+    ? (mobileOpen ? 'translateX(0)' : 'translateX(-100%)')
+    : 'none';
+
   return (
     <aside
-      className="sidebar-anim fixed left-0 top-0 h-screen z-40 flex flex-col"
+      className="sidebar-anim fixed left-0 top-0 h-screen flex flex-col transition-all duration-300"
       style={{
-        width: collapsed ? 'var(--sidebar-collapsed-w)' : 'var(--sidebar-w)',
+        width: sidebarWidth,
+        transform: transformStyle,
         background: 'var(--surface)',
         borderRight: '1px solid var(--border)',
+        zIndex: isMobile ? 50 : 40,
       }}
     >
       {/* Logo */}
       <div
-        className="flex items-center h-[60px] px-4 shrink-0"
+        className="flex items-center h-[60px] px-4 shrink-0 justify-between"
         style={{ borderBottom: '1px solid var(--border)' }}
       >
-        {/* Icon mark — always visible */}
-        <div className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center glow-purple"
-          style={{ background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2L2 7l10 5 10-5-10-5z" fill="white" fillOpacity="0.9" />
-            <path d="M2 17l10 5 10-5" stroke="white" strokeWidth="2" strokeOpacity="0.7" strokeLinecap="round" />
-            <path d="M2 12l10 5 10-5" stroke="white" strokeWidth="2" strokeOpacity="0.5" strokeLinecap="round" />
-          </svg>
+        <div className="flex items-center">
+          {/* Icon mark — always visible */}
+          <div className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center glow-purple"
+            style={{ background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" fill="white" fillOpacity="0.9" />
+              <path d="M2 17l10 5 10-5" stroke="white" strokeWidth="2" strokeOpacity="0.7" strokeLinecap="round" />
+              <path d="M2 12l10 5 10-5" stroke="white" strokeWidth="2" strokeOpacity="0.5" strokeLinecap="round" />
+            </svg>
+          </div>
+
+          {/* Brand name — hidden when collapsed */}
+          <div
+            className="overflow-hidden"
+            style={{
+              width: (collapsed && !isMobile) ? 0 : 120,
+              opacity: (collapsed && !isMobile) ? 0 : 1,
+              transition: 'width 0.25s ease, opacity 0.2s ease',
+              marginLeft: (collapsed && !isMobile) ? 0 : 10,
+            }}
+          >
+            <span className="font-semibold text-sm tracking-tight whitespace-nowrap gradient-text block">
+              LearnPath
+            </span>
+            <p className="text-[10px] text-slate-500 whitespace-nowrap">Learning Tracker</p>
+          </div>
         </div>
 
-        {/* Brand name — hidden when collapsed */}
-        <div
-          className="overflow-hidden"
-          style={{
-            width: collapsed ? 0 : 160,
-            opacity: collapsed ? 0 : 1,
-            transition: 'width 0.25s ease, opacity 0.2s ease',
-            marginLeft: collapsed ? 0 : 10,
-          }}
-        >
-          <span className="font-semibold text-sm tracking-tight whitespace-nowrap gradient-text">
-            LearnPath
-          </span>
-          <p className="text-[10px] text-slate-500 whitespace-nowrap">Learning Tracker</p>
-        </div>
+        {/* Mobile close button inside sidebar */}
+        {isMobile && (
+          <button
+            onClick={onMobileClose}
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-all cursor-pointer"
+            aria-label="Close menu"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Nav links */}
       <nav className="flex-1 py-4 space-y-0.5 px-2 overflow-y-auto">
         {navItems.map(({ label, href, Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/');
+          const isItemCollapsed = collapsed && !isMobile;
           return (
             <Link
               key={href}
               href={href}
-              title={collapsed ? label : undefined}
+              title={isItemCollapsed ? label : undefined}
+              onClick={isMobile ? onMobileClose : undefined}
               className={[
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium',
                 'transition-all duration-150 group relative',
@@ -130,8 +165,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <span
                 className="whitespace-nowrap overflow-hidden"
                 style={{
-                  width: collapsed ? 0 : 'auto',
-                  opacity: collapsed ? 0 : 1,
+                  width: isItemCollapsed ? 0 : 'auto',
+                  opacity: isItemCollapsed ? 0 : 1,
                   transition: 'opacity 0.2s ease',
                 }}
               >
@@ -139,7 +174,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               </span>
 
               {/* Tooltip when collapsed */}
-              {collapsed && (
+              {isItemCollapsed && (
                 <span className="absolute left-full ml-2 px-2 py-1 rounded-md text-xs font-medium
                   bg-slate-800 text-slate-200 border border-white/10 whitespace-nowrap
                   opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
@@ -154,7 +189,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Divider + toggle */}
       <div className="shrink-0 p-2 space-y-1.5" style={{ borderTop: '1px solid var(--border)' }}>
         {/* User avatar row */}
-        {!collapsed ? (
+        {!(collapsed && !isMobile) ? (
           <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg"
             style={{ background: 'var(--card)' }}>
             <div className="flex items-center gap-2.5 overflow-hidden">
@@ -185,23 +220,25 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </button>
         )}
 
-        {/* Collapse toggle */}
-        <button
-          onClick={onToggle}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg
-            text-slate-500 hover:text-slate-300 hover:bg-white/[0.04] transition-all text-xs font-medium cursor-pointer"
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed
-            ? <ChevronRightIcon size={16} />
-            : (
-              <>
-                <ChevronLeftIcon size={16} />
-                <span className="whitespace-nowrap">Collapse</span>
-              </>
-            )
-          }
-        </button>
+        {/* Collapse toggle (only desktop) */}
+        {!isMobile && (
+          <button
+            onClick={onToggle}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg
+              text-slate-500 hover:text-slate-300 hover:bg-white/[0.04] transition-all text-xs font-medium cursor-pointer"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed
+              ? <ChevronRightIcon size={16} />
+              : (
+                <>
+                  <ChevronLeftIcon size={16} />
+                  <span className="whitespace-nowrap">Collapse</span>
+                </>
+              )
+            }
+          </button>
+        )}
       </div>
     </aside>
   );
