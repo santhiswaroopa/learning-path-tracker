@@ -73,27 +73,38 @@ export default function DashboardPage() {
     async function fetchDashboardData() {
       try {
         setLoading(true);
-        const [dashboardRes, topicsRes, notesRes] = await Promise.all([
-          fetch('/api/dashboard', { credentials: 'include' }),
-          fetch('/api/topics', { credentials: 'include' }),
-          fetch('/api/notes', { credentials: 'include' }),
-        ]);
 
-        if (!dashboardRes.ok || !topicsRes.ok || !notesRes.ok) {
-          throw new Error('Failed to load dashboard data');
+        // Always check auth first via dashboard endpoint
+        const dashboardRes = await fetch('/api/dashboard', { credentials: 'include' });
+
+        // If unauthenticated, redirect to login
+        if (dashboardRes.status === 401) {
+          window.location.href = '/login';
+          return;
         }
 
+        if (!dashboardRes.ok) {
+          const errBody = await dashboardRes.json().catch(() => ({}));
+          throw new Error(errBody.error || `Dashboard API error (${dashboardRes.status})`);
+        }
+
+        // Fetch topics & notes in parallel — failures are non-fatal
+        const [topicsRes, notesRes] = await Promise.all([
+          fetch('/api/topics', { credentials: 'include' }),
+          fetch('/api/notes',  { credentials: 'include' }),
+        ]);
+
         const dashboardData = await dashboardRes.json();
-        const topicsData = await topicsRes.json();
-        const notesData = await notesRes.json();
+        const topicsData = topicsRes.ok  ? await topicsRes.json()  : [];
+        const notesData  = notesRes.ok   ? await notesRes.json()   : [];
 
         setData(dashboardData);
         setTopics(topicsData);
         setNotes(notesData);
         setError(null);
       } catch (err: any) {
-        console.error(err);
-        setError(err.message || 'Something went wrong');
+        console.error('[Dashboard] fetch error:', err);
+        setError(err.message || 'Something went wrong loading the dashboard');
       } finally {
         setLoading(false);
       }
