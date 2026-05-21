@@ -17,13 +17,13 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
  */
 export function createSessionResponse(userId: number, username: string) {
   const response = NextResponse.json({ username });
-    // HttpOnly cookie for security, not secure in dev
+    // HttpOnly cookie for security; Secure in production (HTTPS), not in dev
     response.cookies.set('session', String(userId), {
       httpOnly: true,
       path: '/',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 30,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
     });
   return response;
 }
