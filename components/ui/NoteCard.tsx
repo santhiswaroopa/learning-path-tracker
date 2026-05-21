@@ -5,6 +5,7 @@ interface NoteCardProps {
   note: Note;
   onDelete?: () => void;
   onToggleImportant?: () => void;
+  onView?: () => void;
 }
 
 const StarIcon = ({ size = 13, className = '', fill = 'none' }) => (
@@ -17,6 +18,13 @@ const TrashIcon = ({ size = 13, className = '' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <polyline points="3 6 5 6 21 6" />
     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+  </svg>
+);
+
+const EyeIcon = ({ size = 13, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
   </svg>
 );
 
@@ -40,13 +48,14 @@ function excerptTitle(content: string, max = 60): string {
   return first.length > max ? first.slice(0, max) + '…' : first;
 }
 
-export default function NoteCard({ note, onDelete, onToggleImportant }: NoteCardProps) {
+export default function NoteCard({ note, onDelete, onToggleImportant, onView }: NoteCardProps) {
   const isImp = !!note.isImportant;
   return (
     <article
+      onClick={onView}
       className={`card-hover rounded-xl p-5 flex flex-col gap-3 min-h-[170px] transition-all duration-300 ${
         isImp ? 'shadow-[0_0_20px_rgba(139,92,246,0.12)] border-violet-500/30' : ''
-      }`}
+      } ${onView ? 'cursor-pointer' : ''}`}
       style={{
         background: isImp 
           ? 'linear-gradient(135deg, rgba(139,92,246,0.06) 0%, var(--card) 100%)' 
@@ -97,6 +106,18 @@ export default function NoteCard({ note, onDelete, onToggleImportant }: NoteCard
         </time>
 
         <div className="flex items-center gap-2.5">
+          {onView && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onView();
+              }}
+              className="text-slate-500 hover:text-violet-400 transition-colors cursor-pointer p-1 -m-1"
+              title="View full note"
+            >
+              <EyeIcon size={13} />
+            </button>
+          )}
           {onToggleImportant && (
             <button
               onClick={(e) => {

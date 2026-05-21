@@ -31,13 +31,16 @@ export default function NotesPage() {
   const [search, setSearch]   = useState('');
   const [topicId, setTopicId] = useState(0);
 
-  // Modal State
+  // Add Note Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTopicId, setNewTopicId] = useState<number>(0);
   const [newContent, setNewContent] = useState('');
   const [isImportant, setIsImportant] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // View Note Modal State
+  const [viewNote, setViewNote] = useState<Note | null>(null);
 
   // Fetch Notes and Topics
   useEffect(() => {
@@ -279,6 +282,7 @@ export default function NotesPage() {
                   <div key={note.id} className="fade-in-up" style={{ animationDelay: `${i * 0.05}s`, opacity: 1 }}>
                     <NoteCard 
                       note={note} 
+                      onView={() => setViewNote(note)}
                       onDelete={() => handleDeleteNote(note.id)}
                       onToggleImportant={() => handleToggleNoteImportance(note.id, note.isImportant || false)}
                     />
@@ -387,6 +391,102 @@ export default function NotesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── View Note Modal ────────────────────────────── */}
+      {viewNote && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setViewNote(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl overflow-hidden animate-scale-in"
+            style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              className="flex items-center justify-between px-6 py-4"
+              style={{ borderBottom: '1px solid var(--border)', background: viewNote.isImportant ? 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, transparent 100%)' : undefined }}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.2)' }}
+                >
+                  <span className="text-violet-400 text-sm">📝</span>
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Full Note</p>
+                  <span
+                    className="text-[11px] px-2 py-0.5 rounded-full text-violet-400 font-medium"
+                    style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}
+                  >
+                    {viewNote.topic.title}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewNote(null)}
+                className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.05] text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Note Content */}
+            <div className="px-6 py-5 max-h-[55vh] overflow-y-auto">
+              {viewNote.isImportant && (
+                <div
+                  className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg text-xs text-yellow-400 font-medium"
+                  style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)' }}
+                >
+                  <span>★</span> Marked as important
+                </div>
+              )}
+              <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                {viewNote.content}
+              </p>
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              className="flex items-center justify-between px-6 py-4"
+              style={{ borderTop: '1px solid var(--border)' }}
+            >
+              <time className="text-[11px] text-slate-600">
+                {new Date(viewNote.createdAt).toLocaleDateString('en-US', {
+                  weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+                })}
+              </time>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    handleToggleNoteImportance(viewNote.id, viewNote.isImportant || false);
+                    setViewNote((prev) => prev ? { ...prev, isImportant: !prev.isImportant } : null);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                    viewNote.isImportant
+                      ? 'text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20'
+                      : 'text-slate-400 hover:text-yellow-400 hover:bg-yellow-400/10'
+                  }`}
+                >
+                  <span className="text-[10px]">{viewNote.isImportant ? '★' : '☆'}</span>
+                  {viewNote.isImportant ? 'Unmark' : 'Mark important'}
+                </button>
+                <button
+                  onClick={() => {
+                    handleDeleteNote(viewNote.id);
+                    setViewNote(null);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-all cursor-pointer"
+                >
+                  <span className="text-[10px]">🗑</span> Delete
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
