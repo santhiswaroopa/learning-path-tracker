@@ -1,0 +1,1 @@
+Review current UI and improve spacing, hierarchy, colors, and responsiveness.
