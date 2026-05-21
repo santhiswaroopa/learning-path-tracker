@@ -7,6 +7,10 @@ import ProgressBar from '@/components/ui/ProgressBar';
 import { SearchIcon, FilterIcon, PlusIcon, FileTextIcon, CheckCircleIcon, LayersIcon } from '@/components/icons';
 import type { Topic, TopicStatus, Subtopic, Note } from '@/types';
 
+// Helper: always send session cookie with API calls
+const apiFetch = (url: string, options: RequestInit = {}) =>
+  fetch(url, { ...options, credentials: 'include' });
+
 const FILTERS: { label: string; value: 'all' | TopicStatus }[] = [
   { label: 'All',          value: 'all' },
   { label: 'In Progress',  value: 'IN_PROGRESS' },
@@ -70,7 +74,7 @@ export default function TopicsPage() {
   const fetchTopics = async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
-      const res = await fetch('/api/topics');
+      const res = await apiFetch('/api/topics');
       if (!res.ok) throw new Error('Failed to fetch topics');
       const data = await res.json();
       setTopics(data);
@@ -102,7 +106,7 @@ export default function TopicsPage() {
     async function fetchNotesForTopic() {
       try {
         setLoadingNotes(true);
-        const res = await fetch(`/api/notes?topicId=${topicId}`);
+        const res = await apiFetch(`/api/notes?topicId=${topicId}`);
         if (!res.ok) throw new Error('Failed to load notes');
         const data = await res.json();
         setDrawerNotes(data);
@@ -150,7 +154,7 @@ export default function TopicsPage() {
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
 
-      const res = await fetch('/api/topics', {
+      const res = await apiFetch('/api/topics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -219,7 +223,7 @@ export default function TopicsPage() {
 
     // 3. Make API call in background
     try {
-      const res = await fetch(`/api/subtopics/${subtopicId}`, {
+      const res = await apiFetch(`/api/subtopics/${subtopicId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isCompleted: nextCompleted }),
@@ -257,7 +261,7 @@ export default function TopicsPage() {
     setTopics((prev) => prev.map((t) => (t.id === selectedTopic.id ? updatedTopic : t)));
 
     try {
-      const res = await fetch(`/api/topics/${selectedTopic.id}`, {
+      const res = await apiFetch(`/api/topics/${selectedTopic.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -280,7 +284,7 @@ export default function TopicsPage() {
     if (!selectedTopic) return;
 
     try {
-      const res = await fetch(`/api/topics/${selectedTopic.id}`, {
+      const res = await apiFetch(`/api/topics/${selectedTopic.id}`, {
         method: 'DELETE',
       });
       if (!res.ok) throw new Error('Failed to delete topic');
@@ -300,7 +304,7 @@ export default function TopicsPage() {
 
     try {
       setIsSubmittingNote(true);
-      const res = await fetch('/api/notes', {
+      const res = await apiFetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -330,7 +334,7 @@ export default function TopicsPage() {
     setDrawerNotes((prev) => prev.map((n) => n.id === noteId ? { ...n, isImportant: !currentVal } : n));
 
     try {
-      const res = await fetch(`/api/notes/${noteId}`, {
+      const res = await apiFetch(`/api/notes/${noteId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isImportant: !currentVal }),
@@ -349,7 +353,7 @@ export default function TopicsPage() {
     setDrawerNotes((prev) => prev.filter((n) => n.id !== noteId));
 
     try {
-      const res = await fetch(`/api/notes/${noteId}`, {
+      const res = await apiFetch(`/api/notes/${noteId}`, {
         method: 'DELETE',
       });
       if (!res.ok) throw new Error('Failed to delete note');
@@ -357,7 +361,7 @@ export default function TopicsPage() {
       console.error(err);
       // Re-fetch notes if error
       if (selectedTopic) {
-        const res = await fetch(`/api/notes?topicId=${selectedTopic.id}`);
+        const res = await apiFetch(`/api/notes?topicId=${selectedTopic.id}`);
         if (res.ok) setDrawerNotes(await res.json());
       }
     }
@@ -370,7 +374,7 @@ export default function TopicsPage() {
 
     try {
       setIsSubmittingStep(true);
-      const res = await fetch('/api/subtopics', {
+      const res = await apiFetch('/api/subtopics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topicId: selectedTopic.id, title: newStepTitle.trim() }),

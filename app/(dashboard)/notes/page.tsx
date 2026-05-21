@@ -5,6 +5,10 @@ import NoteCard from '@/components/ui/NoteCard';
 import { SearchIcon, PlusIcon, StickyNoteIcon, BookOpenIcon } from '@/components/icons';
 import type { Note, Topic } from '@/types';
 
+// Helper: always send session cookie with API calls
+const apiFetch = (url: string, options: RequestInit = {}) =>
+  fetch(url, { ...options, credentials: 'include' });
+
 function groupByDate(notesList: Note[]) {
   const groups: Record<string, Note[]> = {};
   notesList.forEach((n) => {
@@ -41,8 +45,8 @@ export default function NotesPage() {
       try {
         setLoading(true);
         const [notesRes, topicsRes] = await Promise.all([
-          fetch('/api/notes'),
-          fetch('/api/topics'),
+          apiFetch('/api/notes'),
+          apiFetch('/api/topics'),
         ]);
 
         if (!notesRes.ok || !topicsRes.ok) {
@@ -94,7 +98,7 @@ export default function NotesPage() {
       setIsSubmitting(true);
       setSubmitError(null);
 
-      const res = await fetch('/api/notes', {
+      const res = await apiFetch('/api/notes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +138,7 @@ export default function NotesPage() {
     setNotes((prev) => prev.map((n) => n.id === noteId ? { ...n, isImportant: !currentVal } : n));
 
     try {
-      const res = await fetch(`/api/notes/${noteId}`, {
+      const res = await apiFetch(`/api/notes/${noteId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isImportant: !currentVal }),
@@ -153,14 +157,14 @@ export default function NotesPage() {
     setNotes((prev) => prev.filter((n) => n.id !== noteId));
 
     try {
-      const res = await fetch(`/api/notes/${noteId}`, {
+      const res = await apiFetch(`/api/notes/${noteId}`, {
         method: 'DELETE',
       });
       if (!res.ok) throw new Error('Failed to delete note');
     } catch (err) {
       console.error(err);
       // Re-fetch list
-      const res = await fetch('/api/notes');
+      const res = await apiFetch('/api/notes');
       if (res.ok) setNotes(await res.json());
     }
   };
