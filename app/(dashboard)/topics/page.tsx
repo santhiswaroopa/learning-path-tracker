@@ -401,7 +401,7 @@ export default function TopicsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-[1400px]">
+    <div className="space-y-6 max-w-[1400px] w-full min-w-0">
       {/* ── Header bar ─────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -441,7 +441,7 @@ export default function TopicsPage() {
         </div>
 
         {/* Category filter */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl overflow-x-auto"
+        <div className="flex items-center gap-1.5 p-1 rounded-xl overflow-x-auto w-full min-w-0"
           style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
           <FilterIcon size={13} className="text-slate-500 ml-1.5 shrink-0" />
           {CATEGORIES.map((cat) => (
@@ -462,13 +462,13 @@ export default function TopicsPage() {
       </div>
 
       {/* ── Status tabs ─────────────────────────────────── */}
-      <div className="flex items-center gap-1 p-1 rounded-xl w-full sm:w-auto"
+      <div className="flex items-center gap-1 p-1 rounded-xl w-full overflow-x-auto"
         style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
         {FILTERS.map((f) => (
           <button
             key={f.value}
             onClick={() => setStatus(f.value)}
-            className="flex-1 sm:flex-none flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0"
             style={
               status === f.value
                 ? { background: 'var(--elevated)', color: '#e2e8f0', border: '1px solid var(--border-hover)' }

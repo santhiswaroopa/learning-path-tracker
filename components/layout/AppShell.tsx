@@ -72,7 +72,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <Navbar onMenuClick={() => setMobileOpen(true)} isMobile={isMobile} />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8" style={{ minWidth: 0 }}>
           {children}
         </main>
       </div>
