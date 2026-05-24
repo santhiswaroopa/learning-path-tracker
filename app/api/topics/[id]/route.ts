@@ -66,6 +66,15 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       }
     }
 
+    // Sync subtopics if status or progress is explicitly updated
+    if (status !== undefined || progress !== undefined) {
+      const isSubtopicCompleted = updatedStatus === TopicStatus.COMPLETED;
+      await prisma.subtopic.updateMany({
+        where: { topicId },
+        data: { isCompleted: isSubtopicCompleted },
+      });
+    }
+
     const updated = await prisma.topic.update({
       where: { id: topicId },
       data: {

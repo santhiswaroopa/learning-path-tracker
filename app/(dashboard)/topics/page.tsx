@@ -241,8 +241,8 @@ export default function TopicsPage() {
     if (!selectedTopic) return;
 
     const isAlreadyCompleted = selectedTopic.status.toUpperCase() === 'COMPLETED';
-    const nextStatus = isAlreadyCompleted ? 'IN_PROGRESS' : 'COMPLETED';
-    const nextProgress = isAlreadyCompleted ? 50 : 100;
+    const nextStatus = isAlreadyCompleted ? 'NOT_STARTED' : 'COMPLETED';
+    const nextProgress = isAlreadyCompleted ? 0 : 100;
 
     // Optimistic update
     const updatedSubtopics = selectedTopic.subtopics.map((s) => ({
@@ -692,46 +692,78 @@ export default function TopicsPage() {
                 <ProgressBar value={selectedTopic.progress} height={6} />
                 
                 <div className="flex gap-2 pt-2">
-                  <button
-                    onClick={handleToggleTopicCompleted}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
-                    style={{
-                      background: selectedTopic.status.toUpperCase() === 'COMPLETED'
-                        ? 'rgba(16,185,129,0.1)'
-                        : 'rgba(255,255,255,0.03)',
-                      color: selectedTopic.status.toUpperCase() === 'COMPLETED' ? '#34d399' : '#94a3b8',
-                      border: selectedTopic.status.toUpperCase() === 'COMPLETED'
-                        ? '1px solid rgba(16,185,129,0.2)'
-                        : '1px solid var(--border)',
-                    }}
-                  >
-                    <CheckCircleIcon size={12} />
-                    {selectedTopic.status.toUpperCase() === 'COMPLETED' ? 'Completed' : 'Mark Completed'}
-                  </button>
+                  {selectedTopic.subtopics.length === 0 ? (
+                    <>
+                      <button
+                        onClick={handleToggleTopicCompleted}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                        style={{
+                          background: selectedTopic.status.toUpperCase() === 'COMPLETED'
+                            ? 'rgba(16,185,129,0.1)'
+                            : 'rgba(255,255,255,0.03)',
+                          color: selectedTopic.status.toUpperCase() === 'COMPLETED' ? '#34d399' : '#94a3b8',
+                          border: selectedTopic.status.toUpperCase() === 'COMPLETED'
+                            ? '1px solid rgba(16,185,129,0.2)'
+                            : '1px solid var(--border)',
+                        }}
+                      >
+                        <CheckCircleIcon size={12} />
+                        {selectedTopic.status.toUpperCase() === 'COMPLETED' ? 'Completed' : 'Mark Completed'}
+                      </button>
 
-                  {confirmDelete ? (
-                    <div className="flex gap-1.5 flex-1">
-                      <button
-                        onClick={handleDeleteTopic}
-                        className="flex-1 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold cursor-pointer"
-                      >
-                        Confirm
-                      </button>
-                      <button
-                        onClick={() => setConfirmDelete(false)}
-                        className="px-3 bg-white/[0.03] text-slate-400 rounded-lg text-xs font-bold hover:text-slate-200 cursor-pointer"
-                        style={{ border: '1px solid var(--border)' }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
+                      {confirmDelete ? (
+                        <div className="flex gap-1.5 w-[140px]">
+                          <button
+                            onClick={handleDeleteTopic}
+                            className="flex-1 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold cursor-pointer"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => setConfirmDelete(false)}
+                            className="px-3 bg-white/[0.03] text-slate-400 rounded-lg text-xs font-bold hover:text-slate-200 cursor-pointer"
+                            style={{ border: '1px solid var(--border)' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDelete(true)}
+                          className="px-3 inline-flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-bold border border-red-500/20 transition-colors cursor-pointer"
+                        >
+                          <TrashIcon size={12} />
+                        </button>
+                      )}
+                    </>
                   ) : (
-                    <button
-                      onClick={() => setConfirmDelete(true)}
-                      className="px-3 inline-flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-bold border border-red-500/20 transition-colors cursor-pointer"
-                    >
-                      <TrashIcon size={12} />
-                    </button>
+                    <div className="w-full flex justify-end">
+                      {confirmDelete ? (
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={handleDeleteTopic}
+                            className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold cursor-pointer text-center"
+                          >
+                            Confirm Delete
+                          </button>
+                          <button
+                            onClick={() => setConfirmDelete(false)}
+                            className="px-3 py-1.5 bg-white/[0.03] text-slate-400 rounded-lg text-xs font-bold hover:text-slate-200 cursor-pointer"
+                            style={{ border: '1px solid var(--border)' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDelete(true)}
+                          className="w-8 h-8 flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg border border-red-500/20 transition-colors cursor-pointer"
+                          title="Delete Topic"
+                        >
+                          <TrashIcon size={12} />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
