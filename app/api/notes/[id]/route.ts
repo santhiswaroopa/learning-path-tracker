@@ -43,6 +43,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         topic: {
           select: { id: true, title: true },
         },
+        subtopic: {
+          select: { id: true, title: true },
+        },
       },
     });
 

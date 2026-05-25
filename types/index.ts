@@ -11,10 +11,12 @@ export interface Subtopic {
 export interface Note {
   id: number;
   topicId: number;
+  subtopicId?: number | null;
   content: string;
   createdAt: string;
   isImportant?: boolean;
   topic: { id: number; title: string };
+  subtopic?: { id: number; title: string } | null;
 }
 
 export interface Topic {

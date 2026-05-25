@@ -54,14 +54,28 @@ export default function QuickRevisionCard({
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
-        {/* Topic Badge */}
-        <span
-          className="text-[10px] px-2.5 py-0.5 rounded-full text-violet-400 font-semibold truncate max-w-[150px] shrink-0"
-          style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}
-          title={note.topic.title}
-        >
-          {note.topic.title}
-        </span>
+        {/* Topic & Subtopic Badges */}
+        <div className="flex items-center gap-1.5 shrink-0 min-w-0 flex-wrap">
+          <span
+            className="text-[10px] px-2 py-0.5 rounded-full text-violet-400 font-semibold truncate max-w-[120px]"
+            style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}
+            title={note.topic.title}
+          >
+            {note.topic.title}
+          </span>
+          {note.subtopic && (
+            <>
+              <span className="text-[10px] text-slate-600">›</span>
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-full text-indigo-400 font-semibold truncate max-w-[120px]"
+                style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)' }}
+                title={note.subtopic.title}
+              >
+                {note.subtopic.title}
+              </span>
+            </>
+          )}
+        </div>
 
         {/* ⭐ Important Button */}
         <button
@@ -69,7 +83,7 @@ export default function QuickRevisionCard({
             e.stopPropagation();
             onToggleImportant();
           }}
-          className="text-yellow-400 hover:scale-110 active:scale-95 transition-all p-1 -m-1 cursor-pointer relative"
+          className="text-yellow-400 hover:scale-110 active:scale-95 transition-all p-1 -m-1 cursor-pointer relative shrink-0"
           title="Remove from revision library"
         >
           <StarIcon size={14} fill="currentColor" className="drop-shadow-[0_0_4px_rgba(250,204,21,0.6)]" />

@@ -162,13 +162,26 @@ export default function QuickRevisionSection({
             <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-violet-500 via-indigo-500 to-blue-500" />
 
             <div className="flex items-start justify-between gap-3 pb-3 border-b border-white/[0.06]">
-              <div className="flex flex-col gap-1">
-                <span
-                  className="text-[10px] px-2 py-0.5 rounded-full text-violet-400 font-semibold self-start"
-                  style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}
-                >
-                  {activeRevisionNote.topic.title}
-                </span>
+              <div className="flex flex-col gap-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span
+                    className="text-[10px] px-2 py-0.5 rounded-full text-violet-400 font-semibold self-start"
+                    style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}
+                  >
+                    {activeRevisionNote.topic.title}
+                  </span>
+                  {activeRevisionNote.subtopic && (
+                    <>
+                      <span className="text-[10px] text-slate-600">›</span>
+                      <span
+                        className="text-[10px] px-2 py-0.5 rounded-full text-indigo-400 font-semibold self-start"
+                        style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)' }}
+                      >
+                        {activeRevisionNote.subtopic.title}
+                      </span>
+                    </>
+                  )}
+                </div>
                 <span className="text-[10px] text-slate-500">
                   Created on {new Date(activeRevisionNote.createdAt).toLocaleDateString(undefined, {
                     month: 'short',
@@ -181,7 +194,7 @@ export default function QuickRevisionSection({
               </div>
               <button
                 onClick={() => setActiveRevisionNote(null)}
-                className="text-slate-500 hover:text-slate-300 text-sm cursor-pointer p-1"
+                className="text-slate-500 hover:text-slate-300 text-sm cursor-pointer p-1 shrink-0"
               >
                 ✕
               </button>

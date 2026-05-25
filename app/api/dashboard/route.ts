@@ -30,56 +30,71 @@ export async function GET(request: Request) {
       ? Math.round((completedSubtopics / totalSubtopics) * 100)
       : 0;
 
+    // IST offset: UTC+5:30 = 330 minutes
+    // Helper: convert any UTC Date to an IST "YYYY-MM-DD" date string
+    const toISTDateStr = (date: Date): string => {
+      const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // 5h30m in ms
+      const istTime = new Date(date.getTime() + IST_OFFSET_MS);
+      return istTime.toISOString().split('T')[0];
+    };
+
+    // Helper: get today's date string in IST
+    const todayIST = (): string => toISTDateStr(new Date());
+
     // Activity dates for streak calculation
+    // Include subtopic updatedAt so completing a step today counts, not just when it was created
     const [topicsWithDates, subtopicsWithDates, notesWithDates] = await Promise.all([
       prisma.topic.findMany({ where: { userId }, select: { createdAt: true } }),
-      prisma.subtopic.findMany({ where: { topic: { userId } }, select: { createdAt: true } }),
+      prisma.subtopic.findMany({ where: { isCompleted: true, topic: { userId } }, select: { createdAt: true, updatedAt: true } }),
       prisma.note.findMany({ where: { userId }, select: { createdAt: true } }),
     ]);
 
     const allDates = [
       ...topicsWithDates.map(t => t.createdAt),
-      ...subtopicsWithDates.map(s => s.createdAt),
+      // Use updatedAt (completion date) for subtopics, fall back to createdAt
+      ...subtopicsWithDates.flatMap(s => [s.createdAt, s.updatedAt]),
       ...notesWithDates.map(n => n.createdAt),
     ];
 
+    // Deduplicate into IST date strings
     const uniqueDates = Array.from(
-      new Set(
-        allDates.map(date => {
-          const d = new Date(date);
-          return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-        })
-      )
+      new Set(allDates.map(date => toISTDateStr(new Date(date))))
     ).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
-    // Streak calculation
+    // Shared IST date strings used by both streak and weekly sections
+    const todayStr = todayIST();
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = toISTDateStr(yesterdayDate);
+
+    // Streak calculation — all comparisons in IST
     let streak = 0;
     if (uniqueDates.length > 0) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
       const hasToday = uniqueDates.includes(todayStr);
       const hasYesterday = uniqueDates.includes(yesterdayStr);
+
       if (hasToday || hasYesterday) {
-        let ref = hasToday ? new Date() : yesterday;
-        while (uniqueDates.includes(ref.toISOString().split('T')[0])) {
+        // Walk back from today (or yesterday if no activity today)
+        let ref = new Date();
+        if (!hasToday) ref.setDate(ref.getDate() - 1);
+        while (uniqueDates.includes(toISTDateStr(ref))) {
           streak++;
           ref.setDate(ref.getDate() - 1);
         }
       }
     }
 
-    // Weekly activity (Mon‑Sun)
-    const today = new Date();
-    const dayOfWeek = today.getDay();
+    // Weekly activity grid (Mon–Sun) — using IST date strings
+    const todayDate = new Date(todayStr + 'T00:00:00Z'); // midnight UTC as anchor for day arithmetic
+    const dayOfWeek = todayDate.getUTCDay(); // 0=Sun, 1=Mon, ... 6=Sat
     const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() + distanceToMonday);
+    const mondayDate = new Date(todayDate);
+    mondayDate.setUTCDate(todayDate.getUTCDate() + distanceToMonday);
     const weeklyDaysActive: boolean[] = [];
     for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
+      const d = new Date(mondayDate);
+      d.setUTCDate(mondayDate.getUTCDate() + i);
+      // d is already an IST-normalized date string (YYYY-MM-DD), matches uniqueDates format
       weeklyDaysActive.push(uniqueDates.includes(d.toISOString().split('T')[0]));
     }
 

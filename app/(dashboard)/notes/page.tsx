@@ -34,6 +34,7 @@ export default function NotesPage() {
   // Add Note Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTopicId, setNewTopicId] = useState<number>(0);
+  const [newSubtopicId, setNewSubtopicId] = useState<number>(0);
   const [newContent, setNewContent] = useState('');
   const [isImportant, setIsImportant] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,6 +64,7 @@ export default function NotesPage() {
         setTopics(topicsData);
         if (topicsData.length > 0) {
           setNewTopicId(topicsData[0].id);
+          setNewSubtopicId(0);
         }
         setError(null);
       } catch (err: any) {
@@ -78,7 +80,8 @@ export default function NotesPage() {
   // Filter Notes
   const filtered = notes.filter((n) => {
     const matchSearch = n.content.toLowerCase().includes(search.toLowerCase()) ||
-      n.topic.title.toLowerCase().includes(search.toLowerCase());
+      n.topic.title.toLowerCase().includes(search.toLowerCase()) ||
+      (n.subtopic?.title || '').toLowerCase().includes(search.toLowerCase());
     const matchTopic  = topicId === 0 || n.topicId === topicId;
     return matchSearch && matchTopic;
   });
@@ -108,6 +111,7 @@ export default function NotesPage() {
         },
         body: JSON.stringify({
           topicId: newTopicId,
+          subtopicId: newSubtopicId > 0 ? newSubtopicId : undefined,
           content: newContent,
           isImportant,
         }),
@@ -125,6 +129,7 @@ export default function NotesPage() {
 
       // Reset Form and Modal
       setNewContent('');
+      setNewSubtopicId(0);
       setIsImportant(false);
       setIsModalOpen(false);
     } catch (err: any) {
@@ -172,6 +177,8 @@ export default function NotesPage() {
     }
   };
 
+  const selectedTopicForModal = topics.find((t) => t.id === newTopicId);
+  const modalSubtopics = selectedTopicForModal?.subtopics || [];
 
   return (
     <div className="space-y-6 max-w-[1200px]">
@@ -333,7 +340,11 @@ export default function NotesPage() {
                 {topics.length > 0 ? (
                   <select
                     value={newTopicId}
-                    onChange={(e) => setNewTopicId(Number(e.target.value))}
+                    onChange={(e) => {
+                      const id = Number(e.target.value);
+                      setNewTopicId(id);
+                      setNewSubtopicId(0);
+                    }}
                     className="w-full px-3 py-2 rounded-xl text-sm text-slate-200 bg-[#0e0e11] border border-white/[0.08] outline-none cursor-pointer focus:border-violet-500/50"
                   >
                     {topics.map((t) => (
@@ -343,6 +354,21 @@ export default function NotesPage() {
                 ) : (
                   <p className="text-xs text-red-400">No topics exist. Create a topic first before adding notes.</p>
                 )}
+              </div>
+
+              {/* Subtopic Select */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Select Subtopic (Optional)</label>
+                <select
+                  value={newSubtopicId}
+                  onChange={(e) => setNewSubtopicId(Number(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl text-sm text-slate-200 bg-[#0e0e11] border border-white/[0.08] outline-none cursor-pointer focus:border-violet-500/50"
+                >
+                  <option value={0}>General Note (No Subtopic)</option>
+                  {modalSubtopics.map((s) => (
+                    <option key={s.id} value={s.id}>{s.title}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Note Content */}
@@ -411,26 +437,39 @@ export default function NotesPage() {
               className="flex items-center justify-between px-6 py-4"
               style={{ borderBottom: '1px solid var(--border)', background: viewNote.isImportant ? 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, transparent 100%)' : undefined }}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <div
                   className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                   style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.2)' }}
                 >
                   <span className="text-violet-400 text-sm">📝</span>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Full Note</p>
-                  <span
-                    className="text-[11px] px-2 py-0.5 rounded-full text-violet-400 font-medium"
-                    style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}
-                  >
-                    {viewNote.topic.title}
-                  </span>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span
+                      className="text-[11px] px-2 py-0.5 rounded-full text-violet-400 font-medium truncate max-w-[150px]"
+                      style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}
+                    >
+                      {viewNote.topic.title}
+                    </span>
+                    {viewNote.subtopic && (
+                      <>
+                        <span className="text-[11px] text-slate-600">›</span>
+                        <span
+                          className="text-[11px] px-2 py-0.5 rounded-full text-indigo-400 font-medium truncate max-w-[150px]"
+                          style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)' }}
+                        >
+                          {viewNote.subtopic.title}
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
               <button
                 onClick={() => setViewNote(null)}
-                className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.05] text-sm"
+                className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.05] text-sm shrink-0"
               >
                 ✕
               </button>

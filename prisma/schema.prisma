@@ -61,6 +61,7 @@ model Subtopic {
   updatedAt   DateTime @updatedAt
 
   topic       Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  notes       Note[]
 
   @@index([topicId])
 }
@@ -68,16 +69,19 @@ model Subtopic {
 model Note {
   id          Int      @id @default(autoincrement())
   topicId     Int
+  subtopicId  Int?
   content     String
   isImportant Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   userId      Int
 
-  topic       Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic       Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  subtopic    Subtopic? @relation(fields: [subtopicId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([topicId])
+  @@index([subtopicId])
   @@index([isImportant])
   @@index([userId])
 }

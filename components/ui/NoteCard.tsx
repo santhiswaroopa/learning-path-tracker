@@ -76,9 +76,9 @@ export default function NoteCard({ note, onDelete, onToggleImportant, onView }: 
 
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-medium text-slate-200 leading-snug line-clamp-2">
-            {excerptTitle(note.content)}
+            {note.subtopic?.title || excerptTitle(note.content)}
           </h3>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             {/* Topic badge */}
             <span
               className="text-[10px] px-2 py-0.5 rounded-full text-violet-400 font-medium truncate max-w-[150px]"
@@ -87,6 +87,18 @@ export default function NoteCard({ note, onDelete, onToggleImportant, onView }: 
             >
               {note.topic.title}
             </span>
+            {note.subtopic && (
+              <>
+                <span className="text-[10px] text-slate-600">›</span>
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded-full text-indigo-400 font-medium truncate max-w-[150px]"
+                  style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)' }}
+                  title={note.subtopic.title}
+                >
+                  {note.subtopic.title}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>

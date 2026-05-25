@@ -29,6 +29,9 @@ export async function GET(request: Request) {
         topic: {
           select: { id: true, title: true },
         },
+        subtopic: {
+          select: { id: true, title: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -47,7 +50,7 @@ export async function POST(request: Request) {
   const userId = user.id;
   try {
     const body = await request.json();
-    const { topicId, content, isImportant } = body;
+    const { topicId, subtopicId, content, isImportant } = body;
 
     if (!topicId || !content) {
       return NextResponse.json({ error: 'TopicId and content are required' }, { status: 400 });
@@ -56,6 +59,13 @@ export async function POST(request: Request) {
     const topicIdNum = parseInt(topicId, 10);
     if (isNaN(topicIdNum)) {
       return NextResponse.json({ error: 'Invalid topicId' }, { status: 400 });
+    }
+
+    const subtopicIdNum: number | undefined = subtopicId != null
+      ? (typeof subtopicId === 'number' ? subtopicId : parseInt(subtopicId, 10))
+      : undefined;
+    if (subtopicIdNum !== undefined && isNaN(subtopicIdNum)) {
+      return NextResponse.json({ error: 'Invalid subtopicId' }, { status: 400 });
     }
 
     // Verify topic belongs to user
@@ -67,12 +77,16 @@ export async function POST(request: Request) {
     const note = await prisma.note.create({
       data: {
         topicId: topicIdNum,
+        subtopicId: subtopicIdNum,
         content,
         isImportant: !!isImportant,
         userId,
       },
       include: {
         topic: {
+          select: { id: true, title: true },
+        },
+        subtopic: {
           select: { id: true, title: true },
         },
       },

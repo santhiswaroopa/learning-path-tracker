@@ -302,31 +302,24 @@ export default function TopicsPage() {
   };
 
   // Toggle Subtopic Completion (requires a note first if checking)
+  // Once a subtopic is completed, it CANNOT be unchecked — it is permanently locked.
   const handleToggleSubtopic = async (subtopicId: number) => {
     if (!selectedTopic) return;
 
     const targetSub = selectedTopic.subtopics.find((s) => s.id === subtopicId);
     if (!targetSub) return;
 
-    const isCurrentlyCompleted = targetSub.isCompleted;
+    // If already completed, do nothing — completed steps are locked
+    if (targetSub.isCompleted) return;
 
-    if (isCurrentlyCompleted) {
-      // If unchecking, immediately toggle it to false (no notes required for unchecking)
-      if (pendingSubtopic?.id === subtopicId) {
-        setPendingSubtopic(null);
-        setNoteValidationError(null);
-      }
-      await executeSubtopicToggle(subtopicId, false);
-    } else {
-      // If checking, set as pending completion and focus/scroll to notes area
-      setPendingSubtopic(targetSub);
-      setNoteValidationError(null);
+    // If checking, set as pending completion and focus/scroll to notes area
+    setPendingSubtopic(targetSub);
+    setNoteValidationError(null);
 
-      setTimeout(() => {
-        noteInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        noteInputRef.current?.focus();
-      }, 100);
-    }
+    setTimeout(() => {
+      noteInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      noteInputRef.current?.focus();
+    }, 100);
   };
 
   // Toggle Topic Completion
@@ -414,6 +407,7 @@ export default function TopicsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           topicId: selectedTopic.id,
+          subtopicId: pendingSubtopic ? pendingSubtopic.id : undefined,
           content: noteContent.trim(),
           isImportant: noteIsImportant,
         }),
@@ -898,26 +892,47 @@ export default function TopicsPage() {
                 <div className="space-y-2">
                   {selectedTopic.subtopics.map((sub: Subtopic) => {
                     const isPending = pendingSubtopic?.id === sub.id;
+                    const isLocked = sub.isCompleted || (sub as any).isDone;
                     return (
                       <label
                         key={sub.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${isPending
-                            ? 'border-violet-500/40 bg-violet-500/5 animate-pulse shadow-[0_0_12px_rgba(139,92,246,0.1)]'
-                            : 'hover:bg-white/[0.02]'
-                          }`}
-                        style={{ border: isPending ? '1px solid rgba(139,92,246,0.4)' : '1px solid var(--border)' }}
+                        className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
+                          isLocked
+                            ? 'opacity-70'
+                            : isPending
+                              ? 'border-violet-500/40 bg-violet-500/5 animate-pulse shadow-[0_0_12px_rgba(139,92,246,0.1)] cursor-pointer'
+                              : 'hover:bg-white/[0.02] cursor-pointer'
+                        }`}
+                        style={{
+                          border: isLocked
+                            ? '1px solid rgba(16,185,129,0.15)'
+                            : isPending
+                              ? '1px solid rgba(139,92,246,0.4)'
+                              : '1px solid var(--border)',
+                          background: isLocked ? 'rgba(16,185,129,0.03)' : undefined,
+                          cursor: isLocked ? 'default' : 'pointer',
+                        }}
                       >
                         <input
                           type="checkbox"
-                          checked={sub.isCompleted || (sub as any).isDone || false}
-                          onChange={() => handleToggleSubtopic(sub.id)}
-                          className="w-4 h-4 rounded bg-white/[0.03] border-white/[0.08] text-violet-600 focus:ring-violet-500/50 accent-violet-600 cursor-pointer"
+                          checked={!!isLocked}
+                          onChange={() => !isLocked && handleToggleSubtopic(sub.id)}
+                          disabled={!!isLocked}
+                          className="w-4 h-4 rounded bg-white/[0.03] border-white/[0.08] text-violet-600 focus:ring-violet-500/50 accent-violet-600"
+                          style={{ cursor: isLocked ? 'not-allowed' : 'pointer' }}
                         />
                         <div className="flex-1 flex items-center justify-between min-w-0">
-                          <span className={`text-xs font-medium transition-colors ${sub.isCompleted ? 'text-slate-500 line-through' : 'text-slate-200'} truncate`}>
+                          <span className={`text-xs font-medium transition-colors ${
+                            isLocked ? 'text-slate-500 line-through' : 'text-slate-200'
+                          } truncate`}>
                             {sub.title}
                           </span>
-                          {isPending && (
+                          {isLocked && (
+                            <span className="text-[10px] text-emerald-500 font-semibold flex items-center gap-1 shrink-0 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                              ✓ Done
+                            </span>
+                          )}
+                          {!isLocked && isPending && (
                             <span className="text-[10px] text-violet-400 font-semibold flex items-center gap-1 shrink-0 bg-violet-400/10 px-1.5 py-0.5 rounded border border-violet-400/20">
                               ✍️ Add note to finish
                             </span>
@@ -1057,6 +1072,16 @@ export default function TopicsPage() {
                             : '1px solid var(--border)'
                         }}
                       >
+                        {n.subtopic && (
+                          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                            <span
+                              className="text-[9px] px-1.5 py-0.5 rounded text-indigo-400 font-semibold"
+                              style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)' }}
+                            >
+                              Step: {n.subtopic.title}
+                            </span>
+                          </div>
+                        )}
                         <p className="text-xs text-slate-300 leading-relaxed">{n.content}</p>
 
                         <div className="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-white/[0.03]">
