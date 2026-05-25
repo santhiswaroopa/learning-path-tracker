@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import TopicCard from '@/components/ui/TopicCard';
 import Badge from '@/components/ui/Badge';
 import ProgressBar from '@/components/ui/ProgressBar';
@@ -12,10 +12,10 @@ const apiFetch = (url: string, options: RequestInit = {}) =>
   fetch(url, { ...options, credentials: 'include' });
 
 const FILTERS: { label: string; value: 'all' | TopicStatus }[] = [
-  { label: 'All',          value: 'all' },
-  { label: 'In Progress',  value: 'IN_PROGRESS' },
-  { label: 'Not Started',  value: 'NOT_STARTED' },
-  { label: 'Completed',    value: 'COMPLETED' },
+  { label: 'All', value: 'all' },
+  { label: 'In Progress', value: 'IN_PROGRESS' },
+  { label: 'Not Started', value: 'NOT_STARTED' },
+  { label: 'Completed', value: 'COMPLETED' },
 ];
 
 const CATEGORIES = ['All', 'Programming', 'Architecture', 'Frontend', 'Databases', 'DevOps', 'Backend'];
@@ -36,14 +36,76 @@ const StarIcon = ({ size = 15, className = '', fill = 'none' }) => (
   </svg>
 );
 
+// Stem helper to reduce false negatives in relevance check (e.g. loops -> loop, networking -> network)
+const getStemWord = (word: string): string => {
+  if (word.endsWith('ing') && word.length > 5) return word.slice(0, -3);
+  if (word.endsWith('ed') && word.length > 4) return word.slice(0, -2);
+  if (word.endsWith('s') && word.length > 3 && !word.endsWith('ss')) return word.slice(0, -1);
+  return word;
+};
+
+// Validate that notes are not empty, not too short, and relevant to the subtopic
+const validateNoteRelevance = (content: string, subtopicTitle: string): { isValid: boolean; reason?: string } => {
+  const noteClean = content.trim().toLowerCase();
+
+  if (!noteClean) {
+    return { isValid: false, reason: 'Note content cannot be empty.' };
+  }
+
+  if (noteClean.length < 15) {
+    return { isValid: false, reason: 'Please write a more detailed note (minimum 15 characters).' };
+  }
+
+  // Common stopwords to filter out from subtopic title keywords
+  const stopWords = new Set([
+    'and', 'or', 'to', 'the', 'a', 'an', 'of', 'in', 'for', 'with', 'on', 'at', 'by',
+    'from', 'about', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'this', 'that',
+    'fundamentals', 'basics', 'fundamental', 'basic', 'introduction', 'intro'
+  ]);
+
+  // Extract keywords from subtopic title
+  const keywords = subtopicTitle
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '') // remove punctuation
+    .split(/\s+/)
+    .map(w => w.trim())
+    .filter(w => w.length > 1 && !stopWords.has(w));
+
+  // If no keywords are found after filtering (e.g. subtopic title was just a stopword or very short),
+  // fallback to all non-space characters from the title.
+  const finalKeywords = keywords.length > 0
+    ? keywords
+    : subtopicTitle.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.trim().length > 0);
+
+  if (finalKeywords.length === 0) {
+    // If subtopic title is empty or has no words, skip relevance check, just require length
+    return { isValid: true };
+  }
+
+  // Check if the note contains at least one keyword (stemmed matching)
+  const isMatch = finalKeywords.some(keyword => {
+    const stem = getStemWord(keyword);
+    return noteClean.includes(stem);
+  });
+
+  if (!isMatch) {
+    return {
+      isValid: false,
+      reason: `Your note needs to be relevant to "${subtopicTitle}". Try incorporating related keywords (e.g.,: ${finalKeywords.slice(0, 3).join(', ')}).`
+    };
+  }
+
+  return { isValid: true };
+};
+
 export default function TopicsPage() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Filter States
-  const [search, setSearch]     = useState('');
-  const [status, setStatus]     = useState<'all' | TopicStatus>('all');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<'all' | TopicStatus>('all');
   const [category, setCategory] = useState('All');
 
   // Modal State (Add Topic)
@@ -64,6 +126,11 @@ export default function TopicsPage() {
   const [noteIsImportant, setNoteIsImportant] = useState(false);
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Notes validation & completion flow states
+  const [pendingSubtopic, setPendingSubtopic] = useState<Subtopic | null>(null);
+  const [noteValidationError, setNoteValidationError] = useState<string | null>(null);
+  const noteInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Add-step inline state
   const [isAddingStep, setIsAddingStep] = useState(false);
@@ -93,6 +160,8 @@ export default function TopicsPage() {
 
   // Fetch Notes for Selected Topic when drawer opens
   useEffect(() => {
+    setPendingSubtopic(null);
+    setNoteValidationError(null);
     if (!selectedTopic) {
       setDrawerNotes([]);
       setConfirmDelete(false);
@@ -124,8 +193,8 @@ export default function TopicsPage() {
   const filtered = topics.filter((t) => {
     const matchSearch = t.title.toLowerCase().includes(search.toLowerCase()) ||
       t.description.toLowerCase().includes(search.toLowerCase());
-    
-    const matchStatus = status === 'all' || 
+
+    const matchStatus = status === 'all' ||
       t.status.toUpperCase() === status.toUpperCase();
 
     const matchCat = category === 'All' || t.category === category;
@@ -189,22 +258,18 @@ export default function TopicsPage() {
     }
   };
 
-  // Toggle Subtopic Completion (Optimistic UI updates)
-  const handleToggleSubtopic = async (subtopicId: number) => {
+  // Helper to execute the actual subtopic completion/uncompletion logic in db & UI
+  const executeSubtopicToggle = async (subtopicId: number, nextCompleted: boolean) => {
     if (!selectedTopic) return;
 
-    const targetSub = selectedTopic.subtopics.find((s) => s.id === subtopicId);
-    if (!targetSub) return;
-    const nextCompleted = !targetSub.isCompleted;
-
     // 1. Optimistically calculate new values
-    const updatedSubtopics = selectedTopic.subtopics.map((s) => 
+    const updatedSubtopics = selectedTopic.subtopics.map((s) =>
       s.id === subtopicId ? { ...s, isCompleted: nextCompleted } : s
     );
     const completedCount = updatedSubtopics.filter((s) => s.isCompleted).length;
     const totalCount = updatedSubtopics.length;
     const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-    
+
     let newStatus = selectedTopic.status;
     if (progress === 100) newStatus = 'COMPLETED';
     else if (progress > 0) newStatus = 'IN_PROGRESS';
@@ -233,6 +298,34 @@ export default function TopicsPage() {
       console.error(err);
       // Revert if failed
       fetchTopics(false);
+    }
+  };
+
+  // Toggle Subtopic Completion (requires a note first if checking)
+  const handleToggleSubtopic = async (subtopicId: number) => {
+    if (!selectedTopic) return;
+
+    const targetSub = selectedTopic.subtopics.find((s) => s.id === subtopicId);
+    if (!targetSub) return;
+
+    const isCurrentlyCompleted = targetSub.isCompleted;
+
+    if (isCurrentlyCompleted) {
+      // If unchecking, immediately toggle it to false (no notes required for unchecking)
+      if (pendingSubtopic?.id === subtopicId) {
+        setPendingSubtopic(null);
+        setNoteValidationError(null);
+      }
+      await executeSubtopicToggle(subtopicId, false);
+    } else {
+      // If checking, set as pending completion and focus/scroll to notes area
+      setPendingSubtopic(targetSub);
+      setNoteValidationError(null);
+
+      setTimeout(() => {
+        noteInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        noteInputRef.current?.focus();
+      }, 100);
     }
   };
 
@@ -270,7 +363,7 @@ export default function TopicsPage() {
         }),
       });
       if (!res.ok) throw new Error('Failed to update topic status');
-      
+
       // Sync list
       fetchTopics(false);
     } catch (err) {
@@ -302,14 +395,26 @@ export default function TopicsPage() {
     e.preventDefault();
     if (!selectedTopic || !noteContent.trim()) return;
 
+    // Validate relevance if we are completing a subtopic
+    if (pendingSubtopic) {
+      const validation = validateNoteRelevance(noteContent, pendingSubtopic.title);
+      if (!validation.isValid) {
+        setNoteValidationError(validation.reason || 'Invalid note content.');
+        noteInputRef.current?.focus();
+        return;
+      }
+    }
+
     try {
       setIsSubmittingNote(true);
+      setNoteValidationError(null);
+
       const res = await apiFetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           topicId: selectedTopic.id,
-          content: noteContent,
+          content: noteContent.trim(),
           isImportant: noteIsImportant,
         }),
       });
@@ -320,9 +425,16 @@ export default function TopicsPage() {
       setDrawerNotes((prev) => [createdNote, ...prev]);
       setNoteContent('');
       setNoteIsImportant(false);
+
+      // If completing a subtopic, execute the check and reset state
+      if (pendingSubtopic) {
+        const subId = pendingSubtopic.id;
+        setPendingSubtopic(null);
+        await executeSubtopicToggle(subId, true);
+      }
     } catch (err) {
       console.error(err);
-      alert('Failed to add note');
+      setNoteValidationError('Failed to add note. Please try again.');
     } finally {
       setIsSubmittingNote(false);
     }
@@ -535,13 +647,13 @@ export default function TopicsPage() {
       {/* ── Add Topic Modal ─────────────────────────────── */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div 
+          <div
             className="w-full max-w-lg rounded-2xl p-6 space-y-4 animate-scale-in"
             style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
           >
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
               <h3 className="text-base font-bold text-slate-100">Add New Topic</h3>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-slate-500 hover:text-slate-300 text-sm cursor-pointer"
               >
@@ -559,7 +671,7 @@ export default function TopicsPage() {
               {/* Title */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-400">Topic Title *</label>
-                <input 
+                <input
                   type="text"
                   required
                   placeholder="e.g. Docker Fundamentals"
@@ -600,7 +712,7 @@ export default function TopicsPage() {
               {/* Description */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-400">Description</label>
-                <textarea 
+                <textarea
                   placeholder="What is this learning path about?"
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
@@ -612,7 +724,7 @@ export default function TopicsPage() {
               {/* Subtopics */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-400">Subtopics (Comma-separated)</label>
-                <input 
+                <input
                   type="text"
                   placeholder="e.g. Containers, Volumes, Networking"
                   value={newSubtopicsText}
@@ -645,16 +757,16 @@ export default function TopicsPage() {
         </div>
       )}
 
-      {/* ── Topic Details Slide-over Drawer ──────────────── */}
+      {/* ── Topic Details Modal ──────────────── */}
       {selectedTopic && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           {/* Backdrop Click */}
           <div className="absolute inset-0" onClick={() => setSelectedTopic(null)} />
 
-          {/* Drawer Panel */}
-          <div 
-            className="relative w-full max-w-lg h-full flex flex-col shadow-2xl animate-slide-in-right overflow-hidden"
-            style={{ background: 'var(--elevated)', borderLeft: '1px solid var(--border)' }}
+          {/* Modal Panel */}
+          <div
+            className="relative w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl rounded-2xl overflow-hidden animate-scale-in"
+            style={{ background: 'var(--elevated)', border: '1px solid var(--border)' }}
           >
             {/* Header */}
             <div className="p-6 border-b border-white/[0.06] flex items-center justify-between">
@@ -664,7 +776,7 @@ export default function TopicsPage() {
                 </span>
                 <h3 className="text-base font-bold text-slate-100 mt-2">{selectedTopic.title}</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedTopic(null)}
                 className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/[0.03] hover:bg-white/[0.08] text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
               >
@@ -690,7 +802,7 @@ export default function TopicsPage() {
                   <span className="text-xs font-bold text-violet-400">{selectedTopic.progress}%</span>
                 </div>
                 <ProgressBar value={selectedTopic.progress} height={6} />
-                
+
                 <div className="flex gap-2 pt-2">
                   {selectedTopic.subtopics.length === 0 ? (
                     <>
@@ -784,23 +896,36 @@ export default function TopicsPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  {selectedTopic.subtopics.map((sub: Subtopic) => (
-                    <label 
-                      key={sub.id}
-                      className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-white/[0.02]"
-                      style={{ border: '1px solid var(--border)' }}
-                    >
-                      <input 
-                        type="checkbox"
-                        checked={sub.isCompleted || (sub as any).isDone || false}
-                        onChange={() => handleToggleSubtopic(sub.id)}
-                        className="w-4 h-4 rounded bg-white/[0.03] border-white/[0.08] text-violet-600 focus:ring-violet-500/50 accent-violet-600 cursor-pointer"
-                      />
-                      <span className={`text-xs font-medium transition-colors ${sub.isCompleted ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
-                        {sub.title}
-                      </span>
-                    </label>
-                  ))}
+                  {selectedTopic.subtopics.map((sub: Subtopic) => {
+                    const isPending = pendingSubtopic?.id === sub.id;
+                    return (
+                      <label
+                        key={sub.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${isPending
+                            ? 'border-violet-500/40 bg-violet-500/5 animate-pulse shadow-[0_0_12px_rgba(139,92,246,0.1)]'
+                            : 'hover:bg-white/[0.02]'
+                          }`}
+                        style={{ border: isPending ? '1px solid rgba(139,92,246,0.4)' : '1px solid var(--border)' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={sub.isCompleted || (sub as any).isDone || false}
+                          onChange={() => handleToggleSubtopic(sub.id)}
+                          className="w-4 h-4 rounded bg-white/[0.03] border-white/[0.08] text-violet-600 focus:ring-violet-500/50 accent-violet-600 cursor-pointer"
+                        />
+                        <div className="flex-1 flex items-center justify-between min-w-0">
+                          <span className={`text-xs font-medium transition-colors ${sub.isCompleted ? 'text-slate-500 line-through' : 'text-slate-200'} truncate`}>
+                            {sub.title}
+                          </span>
+                          {isPending && (
+                            <span className="text-[10px] text-violet-400 font-semibold flex items-center gap-1 shrink-0 bg-violet-400/10 px-1.5 py-0.5 rounded border border-violet-400/20">
+                              ✍️ Add note to finish
+                            </span>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
                   {selectedTopic.subtopics.length === 0 && !isAddingStep && (
                     <p className="text-xs text-slate-500 text-center py-4">No learning steps yet. Add your first step above.</p>
                   )}
@@ -846,18 +971,51 @@ export default function TopicsPage() {
                 </h4>
 
                 {/* Inline Add Note Form */}
-                <form onSubmit={handleAddNoteToTopic} className="space-y-3 p-3 rounded-xl" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+                <form onSubmit={handleAddNoteToTopic} className="space-y-3 p-3 rounded-xl transition-all" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+                  {pendingSubtopic && (
+                    <div className="flex items-center justify-between p-2 rounded bg-violet-500/10 border border-violet-500/20 text-[10px]">
+                      <span className="text-violet-300 font-semibold flex items-center gap-1">
+                        <span>✍️</span>
+                        <span>Completing: <strong className="text-violet-200 font-bold">{pendingSubtopic.title}</strong></span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPendingSubtopic(null);
+                          setNoteValidationError(null);
+                        }}
+                        className="text-violet-400 hover:text-violet-300 text-[10px] font-semibold cursor-pointer"
+                      >
+                        ✕ Cancel
+                      </button>
+                    </div>
+                  )}
+
+                  {noteValidationError && (
+                    <div className="p-2.5 text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg">
+                      ⚠️ {noteValidationError}
+                    </div>
+                  )}
+
                   <textarea
-                    placeholder="Add a new thought or code snippet..."
+                    ref={noteInputRef}
+                    placeholder={
+                      pendingSubtopic
+                        ? `What did you learn about "${pendingSubtopic.title}"? (Min 15 chars...)`
+                        : "Add a new thought or code snippet..."
+                    }
                     value={noteContent}
-                    onChange={(e) => setNoteContent(e.target.value)}
+                    onChange={(e) => {
+                      setNoteContent(e.target.value);
+                      if (noteValidationError) setNoteValidationError(null);
+                    }}
                     required
-                    rows={2}
+                    rows={pendingSubtopic ? 3 : 2}
                     className="w-full bg-transparent outline-none text-xs text-slate-200 placeholder:text-slate-600 resize-none"
                   />
                   <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
                     <label className="flex items-center gap-1.5 cursor-pointer text-[10px] text-slate-500 select-none">
-                      <input 
+                      <input
                         type="checkbox"
                         checked={noteIsImportant}
                         onChange={(e) => setNoteIsImportant(e.target.checked)}
@@ -870,7 +1028,12 @@ export default function TopicsPage() {
                       disabled={isSubmittingNote || !noteContent.trim()}
                       className="px-2.5 py-1 rounded bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-semibold disabled:opacity-50 transition-colors cursor-pointer"
                     >
-                      {isSubmittingNote ? 'Saving...' : 'Add Note'}
+                      {isSubmittingNote
+                        ? 'Saving...'
+                        : pendingSubtopic
+                          ? 'Complete Step'
+                          : 'Add Note'
+                      }
                     </button>
                   </div>
                 </form>
@@ -881,22 +1044,21 @@ export default function TopicsPage() {
                     <p className="text-xs text-slate-500 text-center py-4">Loading notes...</p>
                   ) : drawerNotes.length > 0 ? (
                     drawerNotes.map((n) => (
-                      <div 
+                      <div
                         key={n.id}
-                        className={`p-3.5 rounded-xl flex flex-col gap-2 relative group transition-all duration-300 ${
-                          n.isImportant ? 'shadow-[0_0_15px_rgba(139,92,246,0.1)] border-violet-500/20' : ''
-                        }`}
+                        className={`p-3.5 rounded-xl flex flex-col gap-2 relative group transition-all duration-300 ${n.isImportant ? 'shadow-[0_0_15px_rgba(139,92,246,0.1)] border-violet-500/20' : ''
+                          }`}
                         style={{
-                          background: n.isImportant 
-                            ? 'linear-gradient(135deg, rgba(139,92,246,0.05) 0%, var(--card) 100%)' 
+                          background: n.isImportant
+                            ? 'linear-gradient(135deg, rgba(139,92,246,0.05) 0%, var(--card) 100%)'
                             : 'var(--card)',
-                          border: n.isImportant 
-                            ? '1px solid rgba(139,92,246,0.25)' 
+                          border: n.isImportant
+                            ? '1px solid rgba(139,92,246,0.25)'
                             : '1px solid var(--border)'
                         }}
                       >
                         <p className="text-xs text-slate-300 leading-relaxed">{n.content}</p>
-                        
+
                         <div className="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-white/[0.03]">
                           <span>{new Date(n.createdAt).toLocaleDateString()}</span>
                           <div className="flex items-center gap-2">

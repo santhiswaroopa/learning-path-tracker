@@ -53,7 +53,7 @@ function timeAgo(iso: string) {
   const mins = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
-  
+
   if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins}m ago`;
   if (hours < 24) return `${hours}h ago`;
@@ -91,12 +91,12 @@ export default function DashboardPage() {
         // Fetch topics & notes in parallel — failures are non-fatal
         const [topicsRes, notesRes] = await Promise.all([
           fetch('/api/topics', { credentials: 'include' }),
-          fetch('/api/notes',  { credentials: 'include' }),
+          fetch('/api/notes', { credentials: 'include' }),
         ]);
 
         const dashboardData = await dashboardRes.json();
-        const topicsData = topicsRes.ok  ? await topicsRes.json()  : [];
-        const notesData  = notesRes.ok   ? await notesRes.json()   : [];
+        const topicsData = topicsRes.ok ? await topicsRes.json() : [];
+        const notesData = notesRes.ok ? await notesRes.json() : [];
 
         setData(dashboardData);
         setTopics(topicsData);
@@ -136,7 +136,7 @@ export default function DashboardPage() {
       <div className="space-y-8 max-w-[1400px] animate-pulse">
         {/* Banner Skeleton */}
         <div className="h-32 rounded-2xl bg-white/[0.03] border border-white/[0.05]" />
-        
+
         {/* Cards Skeleton */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
@@ -171,7 +171,7 @@ export default function DashboardPage() {
         </div>
         <h3 className="text-sm font-semibold text-slate-100">Failed to Load Dashboard</h3>
         <p className="text-xs text-slate-500 mt-1">{error}</p>
-        <button 
+        <button
           onClick={() => window.location.reload()}
           className="mt-4 px-4 py-2 rounded-lg text-xs font-semibold bg-violet-600 text-white hover:bg-violet-500 transition-colors"
         >
@@ -214,7 +214,7 @@ export default function DashboardPage() {
 
         <div className="relative flex items-center justify-between flex-wrap gap-4">
           <div>
-            <p className="text-xs font-medium text-violet-400 mb-1 tracking-wide uppercase">Good evening</p>
+            {/* <p className="text-xs font-medium text-violet-400 mb-1 tracking-wide uppercase">Good evening</p> */}
             <h2 className="text-xl font-bold text-slate-100">Welcome back, {username} 👋</h2>
             <p className="text-sm text-slate-400 mt-1">
               You&apos;re on a <span className="text-orange-400 font-semibold">{currentStreak}-day streak</span>. Keep the momentum going!
@@ -368,8 +368,8 @@ export default function DashboardPage() {
                 </div>
                 <ProgressBar value={weeklyGoal > 0 ? (weeklyCompleted / weeklyGoal) * 100 : 0} height={6} />
                 <p className="text-[11px] text-slate-600 mt-2">
-                  {weeklyCompleted >= weeklyGoal 
-                    ? 'Goal achieved! Awesome work!' 
+                  {weeklyCompleted >= weeklyGoal
+                    ? 'Goal achieved! Awesome work!'
                     : `${weeklyGoal - weeklyCompleted} day${weeklyGoal - weeklyCompleted !== 1 ? 's' : ''} left to hit your goal`}
                 </p>
               </div>
